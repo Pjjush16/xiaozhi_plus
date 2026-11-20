@@ -21,7 +21,7 @@ lv_obj_t* MusicPlayer::Create() {
 
     // 标题
     lv_obj_t* header = lv_label_create(screen_);
-    lv_obj_set_style_text_font(header, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(header, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(header, lv_color_hex(0x8B5CF6), 0);
     lv_obj_align(header, LV_ALIGN_TOP_MID, 0, 8);
     lv_label_set_text(header, LV_SYMBOL_AUDIO " YAONET Music");
@@ -37,7 +37,7 @@ lv_obj_t* MusicPlayer::Create() {
 
     // 艺术家
     artist_label_ = lv_label_create(screen_);
-    lv_obj_set_style_text_font(artist_label_, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(artist_label_, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(artist_label_, lv_color_hex(0x888888), 0);
     lv_obj_set_width(artist_label_, 280);
     lv_label_set_long_mode(artist_label_, LV_LABEL_LONG_SCROLL_CIRCULAR);
@@ -66,7 +66,7 @@ lv_obj_t* MusicPlayer::Create() {
     lv_obj_set_style_bg_color(play_btn_, lv_color_hex(0x8B5CF6), 0);
     lv_obj_set_style_radius(play_btn_, 25, 0);
     lv_obj_t* play_lbl = lv_label_create(play_btn_);
-    lv_obj_set_style_text_font(play_lbl, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_font(play_lbl, &lv_font_montserrat_14, 0);
     lv_label_set_text(play_lbl, LV_SYMBOL_PLAY);
     lv_obj_center(play_lbl);
     lv_obj_add_event_cb(play_btn_, OnPlayBtn, LV_EVENT_CLICKED, this);
@@ -84,7 +84,7 @@ lv_obj_t* MusicPlayer::Create() {
 
     // 音量滑块
     volume_label_ = lv_label_create(screen_);
-    lv_obj_set_style_text_font(volume_label_, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(volume_label_, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(volume_label_, lv_color_hex(0xAAAAAA), 0);
     lv_obj_align(volume_label_, LV_ALIGN_BOTTOM_LEFT, 8, -48);
     lv_label_set_text(volume_label_, LV_SYMBOL_VOLUME_MAX " 50");
@@ -111,7 +111,7 @@ lv_obj_t* MusicPlayer::Create() {
 
     // 状态标签
     status_label_ = lv_label_create(screen_);
-    lv_obj_set_style_text_font(status_label_, &lv_font_montserrat_10, 0);
+    lv_obj_set_style_text_font(status_label_, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(status_label_, lv_color_hex(0x666666), 0);
     lv_obj_align(status_label_, LV_ALIGN_BOTTOM_RIGHT, -8, -68);
     lv_label_set_text(status_label_, "");
@@ -123,7 +123,7 @@ lv_obj_t* MusicPlayer::Create() {
     lv_obj_set_style_bg_color(back_btn_, lv_color_hex(0x444466), 0);
     lv_obj_set_style_radius(back_btn_, 15, 0);
     lv_obj_t* back_lbl = lv_label_create(back_btn_);
-    lv_obj_set_style_text_font(back_lbl, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(back_lbl, &lv_font_montserrat_14, 0);
     lv_label_set_text(back_lbl, LV_SYMBOL_HOME);
     lv_obj_center(back_lbl);
     lv_obj_add_event_cb(back_btn_, [](lv_event_t* e) {
@@ -163,7 +163,7 @@ void MusicPlayer::LoadPlaylist() {
             lv_obj_set_style_border_width(item, 0, 0);
 
             lv_obj_t* lbl = lv_label_create(item);
-            lv_obj_set_style_text_font(lbl, &lv_font_montserrat_10, 0);
+            lv_obj_set_style_text_font(lbl, &lv_font_montserrat_14, 0);
             lv_obj_set_width(lbl, 72);
             lv_label_set_long_mode(lbl, LV_LABEL_LONG_DOT);
             lv_label_set_text(lbl, playlist_[i].title.c_str());

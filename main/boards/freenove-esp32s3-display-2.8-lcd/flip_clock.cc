@@ -22,7 +22,7 @@ lv_obj_t* FlipClock::CreateDigitCard(lv_obj_t* parent, int x, int y) {
     lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t* label = lv_label_create(card);
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(label, lv_color_hex(0xFFFFFF), 0);
     lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
     lv_label_set_text(label, "0");
@@ -57,7 +57,7 @@ lv_obj_t* FlipClock::Create() {
 
     // 冒号
     colon1_ = lv_label_create(screen_);
-    lv_obj_set_style_text_font(colon1_, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_font(colon1_, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(colon1_, lv_color_hex(0xFF6B6B), 0);
     lv_obj_set_pos(colon1_, x_start + 2 * (card_w + gap), y_offset + 12);
     lv_label_set_text(colon1_, ":");
@@ -67,7 +67,7 @@ lv_obj_t* FlipClock::Create() {
 
     // 秒标签（底部居中）
     sec_label_ = lv_label_create(screen_);
-    lv_obj_set_style_text_font(sec_label_, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_font(sec_label_, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(sec_label_, lv_color_hex(0xAAAA88), 0);
     lv_obj_align(sec_label_, LV_ALIGN_BOTTOM_MID, 0, -40);
     lv_label_set_text(sec_label_, ":00");
@@ -81,7 +81,7 @@ lv_obj_t* FlipClock::Create() {
     lv_obj_set_style_border_width(back_btn_, 0, 0);
 
     lv_obj_t* btn_label = lv_label_create(back_btn_);
-    lv_obj_set_style_text_font(btn_label, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(btn_label, &lv_font_montserrat_14, 0);
     lv_label_set_text(btn_label, LV_SYMBOL_HOME);
     lv_obj_center(btn_label);
 
