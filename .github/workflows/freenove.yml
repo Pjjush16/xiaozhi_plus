@@ -1,0 +1,29 @@
+name: Build Freenove ESP32-S3 2.8 LCD
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:release-v6.1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build freenove-esp32s3-display-2.8-lcd
+        shell: bash
+        run: |
+          . "$IDF_PATH/export.sh"
+          python scripts/build.py freenove-esp32s3-display-2.8-lcd --name freenove-esp32s3-display-2.8-lcd --language zh-CN
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: xiaozhi_freenove_zh-CN
+          path: build/merged-binary.bin
+          if-no-files-found: error
