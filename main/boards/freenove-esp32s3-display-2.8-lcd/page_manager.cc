@@ -7,6 +7,8 @@
 
 #define TAG "PageManager"
 
+static uint32_t s_idle_elapsed_ms = 0;
+
 void PageManager::Init() {
     // 覆盖层模式无需保存 screen 引用
     ESP_LOGI(TAG, "PageManager initialized (overlay mode)");
@@ -67,8 +69,6 @@ void PageManager::ResetIdleTimer() {
         lv_timer_reset(idle_timer_);
     }
 }
-
-static uint32_t s_idle_elapsed_ms = 0;
 
 void PageManager::IdleTimerCallback(lv_timer_t* timer) {
     auto* self = static_cast<PageManager*>(lv_timer_get_user_data(timer));
