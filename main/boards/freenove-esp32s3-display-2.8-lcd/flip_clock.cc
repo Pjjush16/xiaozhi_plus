@@ -146,12 +146,12 @@ void FlipClock::Create() {
     }, LV_EVENT_CLICKED, nullptr);
 
     // ── 初始化 SNTP ──
-    if (sntp_enabled() == false) {
+    if (esp_sntp_enabled() == false) {
         esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
         esp_sntp_setservername(0, "pool.ntp.org");
         esp_sntp_setservername(1, "ntp.aliyun.com");
         esp_sntp_setservername(2, "cn.pool.ntp.org");
-        sntp_init();
+        esp_sntp_init();
     }
     setenv("TZ", "CST-8", 1);
     tzset();
