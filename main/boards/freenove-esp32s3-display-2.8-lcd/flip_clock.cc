@@ -213,8 +213,9 @@ void FlipClock::UpdateTime() {
 
     // 更新各位数字（仅在变化时刷新，减少重绘）
     auto UpdateDigit = [](lv_obj_t* label, int val) {
-        char buf[2];
-        snprintf(buf, sizeof(buf), "%d", val);
+        char buf[4];
+        buf[0] = '0' + (val % 10);
+        buf[1] = '\0';
         const char* old = lv_label_get_text(label);
         if (old[0] != buf[0]) {
             lv_label_set_text(label, buf);
