@@ -1,5 +1,4 @@
 #include "flip_clock.h"
-#include "page_manager.h"
 
 #include <esp_log.h>
 #include <esp_sntp.h>
@@ -8,7 +7,6 @@
 #define TAG "FlipClock"
 
 // ========== 颜色方案 ==========
-// 深蓝渐变背景 + 暗色卡片 + 亮色数字
 static constexpr uint32_t kBgTopColor     = 0x0D1117;
 static constexpr uint32_t kBgBottomColor  = 0x161B22;
 static constexpr uint32_t kCardBgColor    = 0x21262D;
@@ -16,10 +14,9 @@ static constexpr uint32_t kDigitColor     = 0xE6EDF3;
 static constexpr uint32_t kColonColor     = 0x58A6FF;
 static constexpr uint32_t kDateColor      = 0x8B949E;
 static constexpr uint32_t kSecColor       = 0x7EE787;
-static constexpr uint32_t kBtnColor       = 0x8957E5;
+static constexpr uint32_t kArrowColor     = 0x484F58;  // 低调灰色箭头
 
 // ========== 字体选择 ==========
-// 优先使用 montserrat_36，编译时需开启 CONFIG_LV_FONT_MONTSERRAT_36
 #if LV_FONT_MONTSERRAT_36
   #define DIGIT_FONT lv_font_montserrat_36
 #elif LV_FONT_MONTSERRAT_24
@@ -34,13 +31,20 @@ static constexpr uint32_t kBtnColor       = 0x8957E5;
   #define COLON_FONT lv_font_montserrat_14
 #endif
 
+#if LV_FONT_MONTSERRAT_48
+  #define ARROW_FONT lv_font_montserrat_48
+#elif LV_FONT_MONTSERRAT_36
+  #define ARROW_FONT lv_font_montserrat_36
+#else
+  #define ARROW_FONT lv_font_montserrat_24
+#endif
+
 // ========== 布局参数 (320×240 横屏) ==========
 static constexpr lv_coord_t kCardW     = 62;
 static constexpr lv_coord_t kCardH     = 100;
 static constexpr lv_coord_t kCardR     = 12;
 static constexpr lv_coord_t kGapSmall  = 6;
 static constexpr lv_coord_t kColonW    = 20;
-// 总宽: 4*62 + 2*6 + 20 = 280, 居中偏移 (320-280)/2 = 20
 static constexpr lv_coord_t kXStart    = 20;
 static constexpr lv_coord_t kCardY     = 50;
 
@@ -71,7 +75,6 @@ lv_obj_t* FlipClock::CreateDigitCard(lv_obj_t* parent, lv_coord_t x, lv_coord_t 
 void FlipClock::Create() {
     if (overlay_) return;
 
-    // 创建在 top layer 上，不会被 lv_screen_load 影响
     lv_obj_t* top = lv_layer_top();
 
     overlay_ = lv_obj_create(top);
@@ -125,25 +128,30 @@ void FlipClock::Create() {
     lv_obj_align(sec_label_, LV_ALIGN_BOTTOM_RIGHT, -16, -12);
     lv_label_set_text(sec_label_, ":00");
 
-    // ── "小智" 按钮（左下角）──
-    xiaozhi_btn_ = lv_btn_create(overlay_);
-    lv_obj_set_size(xiaozhi_btn_, 56, 32);
-    lv_obj_align(xiaozhi_btn_, LV_ALIGN_BOTTOM_LEFT, 12, -10);
-    lv_obj_set_style_bg_color(xiaozhi_btn_, lv_color_hex(kBtnColor), 0);
-    lv_obj_set_style_radius(xiaozhi_btn_, 16, 0);
-    lv_obj_set_style_border_width(xiaozhi_btn_, 0, 0);
-    lv_obj_set_style_shadow_width(xiaozhi_btn_, 6, 0);
-    lv_obj_set_style_shadow_color(xiaozhi_btn_, lv_color_hex(0x000000), 0);
-    lv_obj_set_style_shadow_opa(xiaozhi_btn_, LV_OPA_30, 0);
+    // ── 方向箭头提示（纯视觉提示，不可点击）──
+    // 左侧 ← 左滑去闹钟
+    arrow_left_ = lv_label_create(overlay_);
+    lv_obj_set_style_text_font(arrow_left_, &ARROW_FONT, 0);
+    lv_obj_set_style_text_color(arrow_left_, lv_color_hex(kArrowColor), 0);
+    lv_obj_set_style_text_opa(arrow_left_, LV_OPA_50, 0);
+    lv_obj_align(arrow_left_, LV_ALIGN_LEFT_MID, 8, 0);
+    lv_label_set_text(arrow_left_, LV_SYMBOL_LEFT);
 
-    lv_obj_t* btn_label = lv_label_create(xiaozhi_btn_);
-    lv_obj_set_style_text_font(btn_label, &lv_font_montserrat_14, 0);
-    lv_label_set_text(btn_label, "小智");
-    lv_obj_center(btn_label);
+    // 右侧 → 右滑去音乐
+    arrow_right_ = lv_label_create(overlay_);
+    lv_obj_set_style_text_font(arrow_right_, &ARROW_FONT, 0);
+    lv_obj_set_style_text_color(arrow_right_, lv_color_hex(kArrowColor), 0);
+    lv_obj_set_style_text_opa(arrow_right_, LV_OPA_50, 0);
+    lv_obj_align(arrow_right_, LV_ALIGN_RIGHT_MID, -8, 0);
+    lv_label_set_text(arrow_right_, LV_SYMBOL_RIGHT);
 
-    lv_obj_add_event_cb(xiaozhi_btn_, [](lv_event_t* e) {
-        PageManager::GetInstance().SwitchTo(PageId::XIAOZHI);
-    }, LV_EVENT_CLICKED, nullptr);
+    // 底部 ↓ 上滑去小智
+    arrow_bottom_ = lv_label_create(overlay_);
+    lv_obj_set_style_text_font(arrow_bottom_, &ARROW_FONT, 0);
+    lv_obj_set_style_text_color(arrow_bottom_, lv_color_hex(kArrowColor), 0);
+    lv_obj_set_style_text_opa(arrow_bottom_, LV_OPA_50, 0);
+    lv_obj_align(arrow_bottom_, LV_ALIGN_BOTTOM_MID, 0, -8);
+    lv_label_set_text(arrow_bottom_, LV_SYMBOL_DOWN);
 
     // ── 初始化 SNTP ──
     if (esp_sntp_enabled() == false) {
@@ -201,7 +209,6 @@ void FlipClock::UpdateTime() {
     time(&now);
     localtime_r(&now, &timeinfo);
 
-    // SNTP 未同步时显示等待提示
     if (timeinfo.tm_year < 100) {
         lv_label_set_text(sec_label_, "同步中...");
         return;
@@ -211,7 +218,6 @@ void FlipClock::UpdateTime() {
     int min  = timeinfo.tm_min;
     int sec  = timeinfo.tm_sec;
 
-    // 更新各位数字（仅在变化时刷新，减少重绘）
     auto UpdateDigit = [](lv_obj_t* label, int val) {
         char buf[4];
         buf[0] = '0' + (val % 10);
@@ -227,12 +233,10 @@ void FlipClock::UpdateTime() {
     UpdateDigit(min_tens_label_,  min / 10);
     UpdateDigit(min_ones_label_,  min % 10);
 
-    // 秒数
     char sec_buf[8];
     snprintf(sec_buf, sizeof(sec_buf), ":%02d", sec);
     lv_label_set_text(sec_label_, sec_buf);
 
-    // 日期（中文星期）
     const char* wdays[] = {"周日", "周一", "周二", "周三", "周四", "周五", "周六"};
     char date_buf[48];
     snprintf(date_buf, sizeof(date_buf), "%04d年%02d月%02d日 %s",

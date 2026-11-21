@@ -18,6 +18,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <esp_timer.h>
+#include <cstdlib>
 
 #include "led/single_led.h"
 #include "system_reset.h"
@@ -29,6 +30,10 @@
 #include "music_player.h"
 
 #define TAG "FreenoveESP32S3Display"
+
+// 滑动手势阈值
+static constexpr int kSwipeMinDist = 50;   // 最小滑动距离（像素）
+static constexpr int kSwipeMaxTime = 800;  // 最大滑动时间（ms）
 
 class TouchDriver {
 public:
@@ -72,19 +77,27 @@ private:
     i2c_master_bus_handle_t codec_i2c_bus_;
     TouchDriver touch_;
     AdcBatteryMonitor* adc_battery_monitor_;
-    bool clock_active_ = false;
 
     void InitializeBatteryMonitor() {
         adc_battery_monitor_ = new AdcBatteryMonitor(ADC_UNIT_1, ADC_CHANNEL_8, 200000, 200000, GPIO_NUM_NC);
     }
 
+    /**
+     * 触摸任务 — 手势导航
+     *
+     * 翻页时钟是默认页面：
+     *   左滑 → 闹钟    右滑 → 音乐    上滑 → 小智
+     * 长按 3 秒 → WiFi 配网
+     * 在小智页面：单击 = 切换对话，双击 = 开始监听
+     * 在非时钟页面：单击 = 返回时钟
+     */
     static void TouchTask(void *arg) {
         auto *self = static_cast<FreenoveESP32S3Display*>(arg);
         auto &app = Application::GetInstance();
 
-        uint32_t last_tap = 0;
-        uint32_t down_start = 0;
         bool down = false;
+        uint16_t start_x = 0, start_y = 0;
+        uint32_t start_time = 0;
 
         while (true) {
             bool t;
@@ -93,38 +106,76 @@ private:
 
             uint32_t now = esp_timer_get_time() / 1000;
 
-            if (t) {
-                if (!down) {
-                    down = true;
-                    down_start = now;
-                }
+            if (t && !down) {
+                // 触摸按下
+                down = true;
+                start_x = x;
+                start_y = y;
+                start_time = now;
             }
 
             if (!t && down) {
+                // 触摸抬起
                 down = false;
-                uint32_t press = now - down_start;
+                uint32_t duration = now - start_time;
+                int dx = (int)x - (int)start_x;
+                int dy = (int)y - (int)start_y;
 
-                if (press > 3000) {
+                PageManager::GetInstance().ResetIdleTimer();
+
+                if (duration > 3000) {
+                    // 长按 → WiFi 配网
                     self->EnterWifiConfigMode();
-                } else {
-                    // 如果当前在自定义页面，双击切回小智
-                    if (PageManager::GetInstance().GetCurrentPage() != PageId::XIAOZHI) {
-                        if (now - last_tap < 250) {
-                            PageManager::GetInstance().SwitchTo(PageId::XIAOZHI);
-                            last_tap = 0;
-                        } else {
-                            last_tap = now;
+                    continue;
+                }
+
+                if (duration <= kSwipeMaxTime) {
+                    int adx = abs(dx);
+                    int ady = abs(dy);
+
+                    if (adx > kSwipeMinDist || ady > kSwipeMinDist) {
+                        // 滑动手势
+                        auto current = PageManager::GetInstance().GetCurrentPage();
+
+                        if (current == PageId::FLIP_CLOCK) {
+                            // 翻页时钟页面的手势导航
+                            if (adx > ady) {
+                                // 水平滑动
+                                if (dx < 0) {
+                                    // 左滑 → 闹钟
+                                    PageManager::GetInstance().SwitchTo(PageId::ALARM);
+                                    ESP_LOGI(TAG, "Swipe left → alarm");
+                                } else {
+                                    // 右滑 → 音乐
+                                    PageManager::GetInstance().SwitchTo(PageId::MUSIC_PLAYER);
+                                    ESP_LOGI(TAG, "Swipe right → music");
+                                }
+                            } else {
+                                // 垂直滑动
+                                if (dy < 0) {
+                                    // 上滑 → 小智
+                                    PageManager::GetInstance().SwitchTo(PageId::XIAOZHI);
+                                    ESP_LOGI(TAG, "Swipe up → xiaozhi");
+                                }
+                                // 下滑暂不处理
+                            }
+                        } else if (current != PageId::XIAOZHI) {
+                            // 闹钟/音乐页面：任何滑动都返回时钟
+                            PageManager::GetInstance().SwitchTo(PageId::FLIP_CLOCK);
+                            ESP_LOGI(TAG, "Swipe → back to clock");
                         }
-                    } else {
-                        // 在小智页面，正常处理
-                        if (now - last_tap < 250) {
-                            app.StartListening();
-                            last_tap = 0;
-                        } else {
-                            app.ToggleChatState();
-                            last_tap = now;
-                        }
+                        continue;
                     }
+                }
+
+                // 点击（非滑动）
+                auto current = PageManager::GetInstance().GetCurrentPage();
+                if (current == PageId::XIAOZHI) {
+                    // 小智页面：单击切换对话状态
+                    app.ToggleChatState();
+                } else if (current != PageId::FLIP_CLOCK) {
+                    // 非时钟非小智页面：点击返回时钟
+                    PageManager::GetInstance().SwitchTo(PageId::FLIP_CLOCK);
                 }
             }
 
@@ -208,8 +259,6 @@ private:
     }
 
     void InitializeCustomPages() {
-        // 等 LVGL 初始化完成后获取小智主屏幕
-        // 使用延迟任务确保 LVGL 已就绪
         esp_timer_create_args_t timer_args = {
             .callback = [](void* arg) {
                 auto* self = static_cast<FreenoveESP32S3Display*>(arg);
@@ -224,7 +273,6 @@ private:
     }
 
     void SetupCustomPages() {
-        // 覆盖层模式：只需确认 LVGL 已就绪
         if (!lv_screen_active()) {
             ESP_LOGW(TAG, "No active screen, retry in 2s");
             esp_timer_create_args_t retry = {
@@ -241,17 +289,19 @@ private:
             return;
         }
 
-        // 初始化页面管理器（覆盖层模式，无需 screen 引用）
         PageManager::GetInstance().Init();
 
-        // 预创建覆盖层 UI（创建时隐藏）
+        // 预创建所有覆盖层（创建时隐藏）
         FlipClock::GetInstance().Create();
         MusicPlayer::GetInstance().Create();
 
-        // 设置空闲 30 秒后自动跳转到翻页时钟
+        // 开机默认显示翻页时钟
+        FlipClock::GetInstance().Show();
+
+        // 空闲 30 秒后自动回到翻页时钟
         PageManager::GetInstance().SetIdleTimeout(30);
 
-        ESP_LOGI(TAG, "Custom pages initialized: flip_clock, music_player (overlay mode)");
+        ESP_LOGI(TAG, "Custom pages ready, flip clock shown as default");
     }
 
     void InitializeTools() {
@@ -259,7 +309,7 @@ private:
 
         // MCP 工具：切换页面
         mcp.AddTool("self.screen.switch_page",
-            "切换设备显示页面。可选页面: xiaozhi(小智AI对话), flip_clock(翻页时钟), music_player(音乐播放器)",
+            "切换设备显示页面。可选页面: xiaozhi(小智AI对话), flip_clock(翻页时钟), music_player(音乐播放器), alarm(闹钟)",
             PropertyList({Property("page", kPropertyTypeString, "xiaozhi")}),
             [](const PropertyList& props) -> ReturnValue {
                 std::string page = props["page"].value<std::string>();
@@ -272,8 +322,11 @@ private:
                 } else if (page == "music_player" || page == "music" || page == "音乐") {
                     PageManager::GetInstance().SwitchTo(PageId::MUSIC_PLAYER);
                     return std::string("已切换到音乐播放器");
+                } else if (page == "alarm" || page == "闹钟") {
+                    PageManager::GetInstance().SwitchTo(PageId::ALARM);
+                    return std::string("已切换到闹钟");
                 }
-                return std::string("未知页面: ") + page + "。可选: xiaozhi, flip_clock, music_player";
+                return std::string("未知页面: ") + page + "。可选: xiaozhi, flip_clock, music_player, alarm";
             });
 
         // MCP 工具：音乐播放控制
@@ -288,7 +341,6 @@ private:
                 auto& player = MusicPlayer::GetInstance();
                 if (action == "play") {
                     player.Play();
-                    // 自动切到音乐页面
                     PageManager::GetInstance().SwitchTo(PageId::MUSIC_PLAYER);
                     return std::string("正在播放: ") + player.GetCurrentSong().title;
                 } else if (action == "pause") {
@@ -320,12 +372,9 @@ private:
         ESP_LOGI(TAG, "MCP tools registered: switch_page, music.control, get_current_page");
     }
 
-    // 注册唤醒词回调：唤醒时切回小智页面
     void RegisterWakeWordCallback() {
         auto& app = Application::GetInstance();
         app.RegisterMcpBroadcastCallback([](const std::string& payload) {
-            // 当收到 MCP 广播消息时（包括唤醒），切回小智页面
-            // 这里简单处理：如果有 "wake" 相关内容就切回
             if (payload.find("wake") != std::string::npos ||
                 payload.find("listen") != std::string::npos) {
                 PageManager::GetInstance().OnWakeWordTriggered();

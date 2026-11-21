@@ -125,20 +125,6 @@ void MusicPlayer::Create() {
     lv_obj_align(status_label_, LV_ALIGN_BOTTOM_RIGHT, -8, -68);
     lv_label_set_text(status_label_, "");
 
-    // 左下角返回按钮
-    back_btn_ = lv_btn_create(overlay_);
-    lv_obj_set_size(back_btn_, 50, 30);
-    lv_obj_align(back_btn_, LV_ALIGN_BOTTOM_LEFT, 8, -8);
-    lv_obj_set_style_bg_color(back_btn_, lv_color_hex(0x444466), 0);
-    lv_obj_set_style_radius(back_btn_, 15, 0);
-    lv_obj_t* back_lbl = lv_label_create(back_btn_);
-    lv_obj_set_style_text_font(back_lbl, &lv_font_montserrat_14, 0);
-    lv_label_set_text(back_lbl, LV_SYMBOL_HOME);
-    lv_obj_center(back_lbl);
-    lv_obj_add_event_cb(back_btn_, [](lv_event_t* e) {
-        PageManager::GetInstance().SwitchTo(PageId::XIAOZHI);
-    }, LV_EVENT_CLICKED, nullptr);
-
     // 加载播放列表
     LoadPlaylist();
     UpdateUI();
