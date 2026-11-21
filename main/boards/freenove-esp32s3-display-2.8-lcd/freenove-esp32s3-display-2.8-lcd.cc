@@ -72,7 +72,6 @@ private:
     i2c_master_bus_handle_t codec_i2c_bus_;
     TouchDriver touch_;
     AdcBatteryMonitor* adc_battery_monitor_;
-    lv_obj_t* xiaozhi_screen_ = nullptr;
     bool clock_active_ = false;
 
     void InitializeBatteryMonitor() {
@@ -225,10 +224,9 @@ private:
     }
 
     void SetupCustomPages() {
-        // 获取当前 LVGL 活跃屏幕作为小智主页面
-        xiaozhi_screen_ = lv_screen_active();
-        if (!xiaozhi_screen_) {
-            ESP_LOGW(TAG, "No active screen found, retry in 2s");
+        // 覆盖层模式：只需确认 LVGL 已就绪
+        if (!lv_screen_active()) {
+            ESP_LOGW(TAG, "No active screen, retry in 2s");
             esp_timer_create_args_t retry = {
                 .callback = [](void* arg) {
                     auto* self = static_cast<FreenoveESP32S3Display*>(arg);
@@ -243,36 +241,17 @@ private:
             return;
         }
 
-        // 初始化页面管理器
-        PageManager::GetInstance().Init(xiaozhi_screen_);
+        // 初始化页面管理器（覆盖层模式，无需 screen 引用）
+        PageManager::GetInstance().Init();
 
-        // 注册翻页时钟页面
-        PageManager::GetInstance().RegisterPage(
-            PageId::FLIP_CLOCK,
-            []() -> lv_obj_t* {
-                auto* screen = FlipClock::GetInstance().Create();
-                FlipClock::GetInstance().Start();
-                return screen;
-            },
-            [](lv_obj_t* screen) {
-                FlipClock::GetInstance().Stop();
-            }
-        );
+        // 预创建覆盖层 UI（创建时隐藏）
+        FlipClock::GetInstance().Create();
+        MusicPlayer::GetInstance().Create();
 
-        // 注册音乐播放器页面
-        PageManager::GetInstance().RegisterPage(
-            PageId::MUSIC_PLAYER,
-            []() -> lv_obj_t* {
-                auto* screen = MusicPlayer::GetInstance().Create();
-                MusicPlayer::GetInstance().Start();
-                return screen;
-            },
-            [](lv_obj_t* screen) {
-                MusicPlayer::GetInstance().Stop();
-            }
-        );
+        // 设置空闲 30 秒后自动跳转到翻页时钟
+        PageManager::GetInstance().SetIdleTimeout(30);
 
-        ESP_LOGI(TAG, "Custom pages registered: flip_clock, music_player");
+        ESP_LOGI(TAG, "Custom pages initialized: flip_clock, music_player (overlay mode)");
     }
 
     void InitializeTools() {

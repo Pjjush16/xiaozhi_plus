@@ -13,21 +13,30 @@
 // music.yaonet.de5.net API 基地址
 const char* MusicPlayer::API_BASE = "https://music.yaonet.de5.net";
 
-lv_obj_t* MusicPlayer::Create() {
-    if (screen_) return screen_;
+void MusicPlayer::Create() {
+    if (overlay_) return;
 
-    screen_ = lv_obj_create(nullptr);
-    lv_obj_set_style_bg_color(screen_, lv_color_hex(0x0F0F1A), 0);
+    lv_obj_t* top = lv_layer_top();
+
+    overlay_ = lv_obj_create(top);
+    lv_obj_set_size(overlay_, 320, 240);
+    lv_obj_set_pos(overlay_, 0, 0);
+    lv_obj_set_style_bg_color(overlay_, lv_color_hex(0x0F0F1A), 0);
+    lv_obj_set_style_bg_opa(overlay_, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(overlay_, 0, 0);
+    lv_obj_set_style_radius(overlay_, 0, 0);
+    lv_obj_set_style_pad_all(overlay_, 0, 0);
+    lv_obj_clear_flag(overlay_, LV_OBJ_FLAG_SCROLLABLE);
 
     // 标题
-    lv_obj_t* header = lv_label_create(screen_);
+    lv_obj_t* header = lv_label_create(overlay_);
     lv_obj_set_style_text_font(header, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(header, lv_color_hex(0x8B5CF6), 0);
     lv_obj_align(header, LV_ALIGN_TOP_MID, 0, 8);
     lv_label_set_text(header, LV_SYMBOL_AUDIO " YAONET Music");
 
     // 歌曲名
-    title_label_ = lv_label_create(screen_);
+    title_label_ = lv_label_create(overlay_);
     lv_obj_set_style_text_font(title_label_, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(title_label_, lv_color_hex(0xFFFFFF), 0);
     lv_obj_set_width(title_label_, 280);
@@ -36,7 +45,7 @@ lv_obj_t* MusicPlayer::Create() {
     lv_label_set_text(title_label_, "Loading...");
 
     // 艺术家
-    artist_label_ = lv_label_create(screen_);
+    artist_label_ = lv_label_create(overlay_);
     lv_obj_set_style_text_font(artist_label_, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(artist_label_, lv_color_hex(0x888888), 0);
     lv_obj_set_width(artist_label_, 280);
@@ -49,7 +58,7 @@ lv_obj_t* MusicPlayer::Create() {
     int btn_size = 40;
 
     // 上一首
-    prev_btn_ = lv_btn_create(screen_);
+    prev_btn_ = lv_btn_create(overlay_);
     lv_obj_set_size(prev_btn_, btn_size, btn_size);
     lv_obj_set_pos(prev_btn_, 60, btn_y);
     lv_obj_set_style_bg_color(prev_btn_, lv_color_hex(0x333344), 0);
@@ -60,7 +69,7 @@ lv_obj_t* MusicPlayer::Create() {
     lv_obj_add_event_cb(prev_btn_, OnPrevBtn, LV_EVENT_CLICKED, this);
 
     // 播放/暂停
-    play_btn_ = lv_btn_create(screen_);
+    play_btn_ = lv_btn_create(overlay_);
     lv_obj_set_size(play_btn_, btn_size + 10, btn_size + 10);
     lv_obj_set_pos(play_btn_, 130, btn_y - 5);
     lv_obj_set_style_bg_color(play_btn_, lv_color_hex(0x8B5CF6), 0);
@@ -72,7 +81,7 @@ lv_obj_t* MusicPlayer::Create() {
     lv_obj_add_event_cb(play_btn_, OnPlayBtn, LV_EVENT_CLICKED, this);
 
     // 下一首
-    next_btn_ = lv_btn_create(screen_);
+    next_btn_ = lv_btn_create(overlay_);
     lv_obj_set_size(next_btn_, btn_size, btn_size);
     lv_obj_set_pos(next_btn_, 220, btn_y);
     lv_obj_set_style_bg_color(next_btn_, lv_color_hex(0x333344), 0);
@@ -83,13 +92,13 @@ lv_obj_t* MusicPlayer::Create() {
     lv_obj_add_event_cb(next_btn_, OnNextBtn, LV_EVENT_CLICKED, this);
 
     // 音量滑块
-    volume_label_ = lv_label_create(screen_);
+    volume_label_ = lv_label_create(overlay_);
     lv_obj_set_style_text_font(volume_label_, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(volume_label_, lv_color_hex(0xAAAAAA), 0);
     lv_obj_align(volume_label_, LV_ALIGN_BOTTOM_LEFT, 8, -48);
     lv_label_set_text(volume_label_, LV_SYMBOL_VOLUME_MAX " 50");
 
-    volume_slider_ = lv_slider_create(screen_);
+    volume_slider_ = lv_slider_create(overlay_);
     lv_obj_set_width(volume_slider_, 200);
     lv_obj_align(volume_slider_, LV_ALIGN_BOTTOM_LEFT, 60, -44);
     lv_slider_set_range(volume_slider_, 0, 100);
@@ -99,7 +108,7 @@ lv_obj_t* MusicPlayer::Create() {
     lv_obj_add_event_cb(volume_slider_, OnVolumeChanged, LV_EVENT_VALUE_CHANGED, this);
 
     // 播放列表区域
-    list_container_ = lv_obj_create(screen_);
+    list_container_ = lv_obj_create(overlay_);
     lv_obj_set_size(list_container_, 300, 60);
     lv_obj_align(list_container_, LV_ALIGN_BOTTOM_MID, 0, -2);
     lv_obj_set_style_bg_color(list_container_, lv_color_hex(0x1A1A2E), 0);
@@ -110,14 +119,14 @@ lv_obj_t* MusicPlayer::Create() {
     lv_obj_set_scrollbar_mode(list_container_, LV_SCROLLBAR_MODE_OFF);
 
     // 状态标签
-    status_label_ = lv_label_create(screen_);
+    status_label_ = lv_label_create(overlay_);
     lv_obj_set_style_text_font(status_label_, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(status_label_, lv_color_hex(0x666666), 0);
     lv_obj_align(status_label_, LV_ALIGN_BOTTOM_RIGHT, -8, -68);
     lv_label_set_text(status_label_, "");
 
     // 左下角返回按钮
-    back_btn_ = lv_btn_create(screen_);
+    back_btn_ = lv_btn_create(overlay_);
     lv_obj_set_size(back_btn_, 50, 30);
     lv_obj_align(back_btn_, LV_ALIGN_BOTTOM_LEFT, 8, -8);
     lv_obj_set_style_bg_color(back_btn_, lv_color_hex(0x444466), 0);
@@ -134,13 +143,27 @@ lv_obj_t* MusicPlayer::Create() {
     LoadPlaylist();
     UpdateUI();
 
-    ESP_LOGI(TAG, "Music player page created, %d songs loaded", (int)playlist_.size());
-    return screen_;
+    ESP_LOGI(TAG, "Music player overlay created, %d songs loaded", (int)playlist_.size());
+}
+
+void MusicPlayer::Show() {
+    if (!overlay_) Create();
+    lv_obj_remove_flag(overlay_, LV_OBJ_FLAG_HIDDEN);
+    visible_ = true;
+    Start();
+    ESP_LOGI(TAG, "Music player shown");
+}
+
+void MusicPlayer::Hide() {
+    if (overlay_) {
+        lv_obj_add_flag(overlay_, LV_OBJ_FLAG_HIDDEN);
+    }
+    visible_ = false;
+    Stop();
+    ESP_LOGI(TAG, "Music player hidden");
 }
 
 void MusicPlayer::LoadPlaylist() {
-    // 从 music.yaonet.de5.net 获取歌曲列表
-    // 先加载一些示例歌曲（后续对接真实API）
     playlist_.clear();
     playlist_.push_back({"1", "Higher", "Tobu", ""});
     playlist_.push_back({"2", "Candyland", "Tobu", ""});
@@ -151,7 +174,6 @@ void MusicPlayer::LoadPlaylist() {
     playlist_.push_back({"7", "Colors", "Tobu", ""});
     playlist_.push_back({"8", "Infectious", "Tobu", ""});
 
-    // 更新播放列表 UI
     if (list_container_) {
         lv_obj_clean(list_container_);
         for (int i = 0; i < (int)playlist_.size(); i++) {
@@ -187,18 +209,15 @@ void MusicPlayer::UpdateUI() {
     lv_label_set_text(title_label_, song.title.c_str());
     lv_label_set_text(artist_label_, song.artist.c_str());
 
-    // 更新播放按钮图标
     lv_obj_t* play_lbl = lv_obj_get_child(play_btn_, 0);
     lv_label_set_text(play_lbl, is_playing_ ? LV_SYMBOL_PAUSE : LV_SYMBOL_PLAY);
 
-    // 更新状态
     if (status_label_) {
         char buf[32];
         snprintf(buf, sizeof(buf), "%d/%d", current_index_ + 1, (int)playlist_.size());
         lv_label_set_text(status_label_, buf);
     }
 
-    // 更新播放列表高亮
     if (list_container_) {
         int count = lv_obj_get_child_count(list_container_);
         for (int i = 0; i < count; i++) {
@@ -231,7 +250,6 @@ void MusicPlayer::OnVolumeChanged(lv_event_t* e) {
     snprintf(buf, sizeof(buf), LV_SYMBOL_VOLUME_MAX " %d", self->volume_);
     lv_label_set_text(self->volume_label_, buf);
 
-    // 同步到硬件音量
     auto& board = Board::GetInstance();
     auto codec = board.GetAudioCodec();
     if (codec) codec->SetOutputVolume(self->volume_);

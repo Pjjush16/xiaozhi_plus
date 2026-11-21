@@ -20,12 +20,21 @@ public:
         return instance;
     }
 
-    // 创建音乐播放器页面
-    lv_obj_t* Create();
+    /** 创建覆盖层 UI（幂等） */
+    void Create();
 
-    // 启动播放器
+    /** 显示音乐播放器覆盖层 */
+    void Show();
+
+    /** 隐藏音乐播放器覆盖层 */
+    void Hide();
+
+    /** 启动播放器 */
     void Start();
     void Stop();
+
+    /** 当前是否正在显示 */
+    bool IsVisible() const { return visible_; }
 
     // 播放控制
     void Play();
@@ -42,7 +51,10 @@ public:
 private:
     MusicPlayer() = default;
 
-    lv_obj_t* screen_ = nullptr;
+    // 覆盖层根面板（在 lv_layer_top 上）
+    lv_obj_t* overlay_ = nullptr;
+    bool visible_ = false;
+
     lv_obj_t* title_label_ = nullptr;
     lv_obj_t* artist_label_ = nullptr;
     lv_obj_t* status_label_ = nullptr;
