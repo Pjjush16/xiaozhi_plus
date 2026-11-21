@@ -78,7 +78,10 @@ void PageManager::SwitchTo(PageId page) {
                 MusicPlayer::GetInstance().Hide();
                 break;
             case PageId::ALARM:
-                if (alarm_overlay_) lv_obj_add_flag(alarm_overlay_, LV_OBJ_FLAG_HIDDEN);
+                if (alarm_overlay_) {
+                    lv_obj_add_flag(alarm_overlay_, LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_clear_flag(alarm_overlay_, LV_OBJ_FLAG_CLICKABLE);
+                }
                 break;
             default:
                 break;
@@ -98,6 +101,7 @@ void PageManager::SwitchTo(PageId page) {
             case PageId::ALARM:
                 if (!alarm_overlay_) CreateAlarmPage();
                 lv_obj_remove_flag(alarm_overlay_, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(alarm_overlay_, LV_OBJ_FLAG_CLICKABLE);
                 // 更新闹钟页面上的当前时间
                 if (alarm_time_label_) {
                     time_t now;

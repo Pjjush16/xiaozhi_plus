@@ -169,8 +169,10 @@ void FlipClock::Create() {
 }
 
 void FlipClock::Show() {
+    // 显示覆盖层：移除隐藏标志，允许点击
     if (!overlay_) Create();
     lv_obj_remove_flag(overlay_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(overlay_, LV_OBJ_FLAG_CLICKABLE);
     visible_ = true;
     Start();
     ESP_LOGI(TAG, "Flip clock shown");
@@ -179,6 +181,7 @@ void FlipClock::Show() {
 void FlipClock::Hide() {
     if (overlay_) {
         lv_obj_add_flag(overlay_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(overlay_, LV_OBJ_FLAG_CLICKABLE);
     }
     visible_ = false;
     Stop();

@@ -102,9 +102,18 @@ private:
         while (true) {
             bool t;
             uint16_t x, y;
-            self->touch_.Read(t, x, y);
+            bool read_ok = self->touch_.Read(t, x, y);
 
             uint32_t now = esp_timer_get_time() / 1000;
+
+            // 调试日志（每5秒输出一次触摸状态）
+            static uint32_t last_debug = 0;
+            if (now - last_debug > 5000) {
+                last_debug = now;
+                ESP_LOGI(TAG, "Touch: ok=%d t=%d x=%d y=%d page=%d",
+                         read_ok, t, x, y,
+                         (int)PageManager::GetInstance().GetCurrentPage());
+            }
 
             if (t && !down) {
                 // 触摸按下

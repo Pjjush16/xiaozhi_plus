@@ -135,6 +135,7 @@ void MusicPlayer::Create() {
 void MusicPlayer::Show() {
     if (!overlay_) Create();
     lv_obj_remove_flag(overlay_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(overlay_, LV_OBJ_FLAG_CLICKABLE);
     visible_ = true;
     Start();
     ESP_LOGI(TAG, "Music player shown");
@@ -143,6 +144,7 @@ void MusicPlayer::Show() {
 void MusicPlayer::Hide() {
     if (overlay_) {
         lv_obj_add_flag(overlay_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(overlay_, LV_OBJ_FLAG_CLICKABLE);
     }
     visible_ = false;
     Stop();
