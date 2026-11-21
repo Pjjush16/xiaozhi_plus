@@ -62,20 +62,21 @@ void PageManager::SetIdleTimeout(uint32_t seconds) {
 }
 
 void PageManager::ResetIdleTimer() {
+    s_idle_elapsed_ms = 0;
     if (idle_timer_) {
-        // 重置计时器 — 通过删除重建来实现
         lv_timer_reset(idle_timer_);
     }
 }
+
+static uint32_t s_idle_elapsed_ms = 0;
 
 void PageManager::IdleTimerCallback(lv_timer_t* timer) {
     auto* self = static_cast<PageManager*>(lv_timer_get_user_data(timer));
     if (self->idle_timeout_sec_ == 0) return;
 
-    // lv_timer 的 period 是 1000ms, 用 repeat_count 计数
-    // 简单方案：检查 lv_display 的 last_activity_time
-    uint32_t idle_ms = lv_tick_elaps(lv_disp_get_default()->last_activity_time);
-    if (idle_ms >= self->idle_timeout_sec_ * 1000) {
+    // 每秒累加空闲计时，ResetIdleTimer 会清零
+    s_idle_elapsed_ms += 1000;
+    if (s_idle_elapsed_ms >= self->idle_timeout_sec_ * 1000) {
         if (self->current_page_ == PageId::XIAOZHI) {
             ESP_LOGI(TAG, "Idle timeout (%us), switching to flip clock",
                      self->idle_timeout_sec_);
